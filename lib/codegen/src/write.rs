@@ -705,4 +705,69 @@ mod tests {
             "function u0:0() fast {\nebb0(v3: i32):\n    v0 -> v3\n    v2 -> v0\n    v4 = iconst.i32 42\n    v5 = iadd v0, v0\n    v1 -> v5\n    v6 = iconst.i32 23\n    v7 = iadd v1, v1\n}\n"
         );
     }
+
+    use entity::SecondaryMap;
+    use ir::Value;
+    use std::fmt;
+
+    fn original_write_value_aliases(
+        w: &mut fmt::Write,
+        aliases: &SecondaryMap<Value, Vec<Value>>,
+        target: Value,
+        indent: usize,
+    ) -> fmt::Result {
+        for &a in &aliases[target] {
+            writeln!(w, "{1:0$}{2} -> {3}", indent, "", a, target)?;
+            original_write_value_aliases(w, aliases, a, indent)?;
+        }
+
+        Ok(())
+    }
+
+    extern crate easybench;
+    use self::easybench::bench_env;
+    use super::write_value_aliases;
+
+    #[derive(Clone)]
+    struct Environment {
+        w: String,
+        aliases: SecondaryMap<Value, Vec<Value>>,
+        target: Value,
+        indent: usize,
+    }
+
+    fn prep_args(n: u32) -> Environment {
+        let w = String::new();
+        let mut aliases = SecondaryMap::new();
+        for i in 0..n {
+            let v = Value::with_number(i).unwrap();
+            let vp = Value::with_number(i + 1).unwrap();
+            aliases[v] = vec![vp];
+        }
+        let target = Value::with_number(0).unwrap();
+        let indent = 1;
+
+        Environment {
+            w,
+            aliases,
+            target,
+            indent,
+        }
+    }
+
+    #[test]
+    fn bench_recursive_vs_iterative_alias_following() {
+        let orig = bench_env(prep_args(8_000), |env| {
+            original_write_value_aliases(&mut env.w, &env.aliases, env.target, env.indent)
+        });
+
+        println!("original: {}", orig);
+
+        let new = bench_env(prep_args(8_000), |env| {
+            write_value_aliases(&mut env.w, &env.aliases, env.target, env.indent)
+        });
+
+        println!("new: {}", new);
+    }
+
 }

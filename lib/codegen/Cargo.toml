@@ -24,6 +24,8 @@ log = { version = "0.4.4", default-features = false }
 # machine code. Integration tests that need external dependencies can be
 # accomodated in `tests`.
 
+easybench = "0.1.4"
+
 [build-dependencies]
 cranelift-codegen-meta = { path = "meta", version = "0.22.0" }
 
